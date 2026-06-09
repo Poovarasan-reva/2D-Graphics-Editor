@@ -28,6 +28,7 @@ void redraw_all_shapes();
 void draw_line_on_canvas(int x1, int y1, int x2, int y2);
 void add_line();
 void delete_shape();
+void clear_input_buffer();
 
 int main() {
     int choice;
@@ -41,7 +42,13 @@ int main() {
         printf("3. Delete Shape\n");
         printf("4. Exit\n");
         printf("Enter your choice: ");
-        scanf("%d", &choice);
+        
+        if (scanf("%d", &choice) != 1) {
+            printf("Invalid input! Please enter a number.\n");
+            clear_input_buffer();
+            continue;
+        }
+        clear_input_buffer();
 
         switch (choice) {
             case 1:
@@ -61,6 +68,12 @@ int main() {
         }
     }
     return 0;
+}
+
+// Utility to prevent infinite menu loops on bad inputs
+void clear_input_buffer() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
 }
 
 // Fills the canvas with underscores '_'
@@ -90,7 +103,6 @@ void draw_line_on_canvas(int x1, int y1, int x2, int y2) {
     int err = dx + dy, e2;
 
     while (1) {
-        // Ensure we don't draw outside the array boundaries
         if (x1 >= 0 && x1 < WIDTH && y1 >= 0 && y1 < HEIGHT) {
             canvas[y1][x1] = '*';
         }
@@ -104,13 +116,12 @@ void draw_line_on_canvas(int x1, int y1, int x2, int y2) {
 
 // Clears canvas and redraws only the active shapes
 void redraw_all_shapes() {
-    init_canvas(); // Reset to underscores
+    init_canvas(); 
     for (int i = 0; i < shape_count; i++) {
         if (shapes[i].active) {
             if (shapes[i].type == LINE) {
                 draw_line_on_canvas(shapes[i].x1, shapes[i].y1, shapes[i].x2, shapes[i].y2);
             }
-            // You will add your Rectangle/Circle/Triangle redraw logic here later
         }
     }
 }
@@ -124,9 +135,26 @@ void add_line() {
 
     int x1, y1, x2, y2;
     printf("Enter Start Coordinates (X1 Y1) [0-%d 0-%d]: ", WIDTH-1, HEIGHT-1);
-    scanf("%d %d", &x1, &y1);
+    if (scanf("%d %d", &x1, &y1) != 2) {
+        printf("Invalid input coordinates!\n");
+        clear_input_buffer();
+        return;
+    }
+    
     printf("Enter End Coordinates (X2 Y2) [0-%d 0-%d]: ", WIDTH-1, HEIGHT-1);
-    scanf("%d %d", &x2, &y2);
+    if (scanf("%d %d", &x2, &y2) != 2) {
+        printf("Invalid input coordinates!\n");
+        clear_input_buffer();
+        return;
+    }
+    clear_input_buffer();
+
+    // Bound Validation Protection
+    if (x1 < 0 || x1 >= WIDTH || y1 < 0 || y1 >= HEIGHT ||
+        x2 < 0 || x2 >= WIDTH || y2 < 0 || y2 >= HEIGHT) {
+        printf("Error: Coordinates are out of canvas boundaries!\n");
+        return;
+    }
 
     // Save shape details
     shapes[shape_count].type = LINE;
@@ -160,13 +188,22 @@ void delete_shape() {
 
     int id;
     printf("Enter the ID of the shape to delete: ");
-    scanf("%d", &id);
+    if (scanf("%d", &id) != 1) {
+        printf("Invalid ID type!\n");
+        clear_input_buffer();
+        return;
+    }
+    clear_input_buffer();
 
-    if (id >= 0 && id < shape_count && shapes[id].active) {
-        shapes[id].active = 0; // Soft delete
-        redraw_all_shapes();   // Refresh canvas
-        printf("Shape %d deleted successfully!\n", id);
+    if (id >= 0 && id < shape_count) {
+        if (shapes[id].active) {
+            shapes[id].active = 0; 
+            redraw_all_shapes();   
+            printf("Shape %d deleted successfully!\n", id);
+        } else {
+            printf("Shape already deleted!\n");
+        }
     } else {
-        printf("Invalid ID!\n");
+        printf("Invalid ID range!\n");
     }
 }
