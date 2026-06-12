@@ -1,0 +1,14 @@
+write a complete, production-ready C program for a menu-driven 2D Graphics Editor
+Data Structure: Use a 2D character array of a fixed size (e.g., 50 columns wide by 20 rows high) as the drawing canvas. Initialize the entire canvas using the underscore character '_'.
+Graphical Elements: Implement functions to draw the following shapes onto the canvas using the asterisk character '*':
+     -Line (Use Bresenham's Line Algorithm)
+   - Rectangle (Prompt for top-left coordinate, width, and height)
+   - Triangle (Prompt for three vertex coordinates and connect them with lines)
+   - Circle (Use Midpoint / Bresenham's Circle Algorithm given a center and radius)
+Object Management: The program must maintain a state of added objects so that the user can:
+   - Add new objects to the canvas
+   - Delete specific objects from the picture
+   - Modify existing objects in the picture
+   (Tip: Use a struct array to track active shapes so that when a shape is deleted or modified, the canvas can be cleared and redrawn completely).
+Interface: Create a clear text-based menu loop handling choices to display the canvas, add a shape, delete a shape, modify a shape, or exit. 
+Robustness: Include thorough input validation using clear_input_buffer strategies to handle bad data gracefully and avoid infinite input loops. Ensure no shape drawing goes outside the boundaries of the 2D array.
