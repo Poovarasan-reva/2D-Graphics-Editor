@@ -2,208 +2,156 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define WIDTH 50
-#define HEIGHT 20
-#define MAX_SHAPES 100
+#define ROWS 20
+#define COLS 40
+#define MAX_OBJECTS 10
 
-// Shape types
-typedef enum { LINE, RECTANGLE } ShapeType;
-
-// Structure to store shape data
+// Structure to store properties of each shape
 typedef struct {
-    ShapeType type;
-    int x1, y1, x2, y2; // Coordinates
-    int active;         // 1 if active, 0 if deleted
+    char type;             // 'C' = Circle, 'R' = Rectangle, 'L' = Line
+    int x1, y1, x2, y2, r; // Coordinates and radius variables
 } Shape;
 
-// Global Variables
-char canvas[HEIGHT][WIDTH];
-Shape shapes[MAX_SHAPES];
-int shape_count = 0;
+// Global variables
+Shape shapes[MAX_OBJECTS]; // Array to store all added objects
+int object_count = 0;      // Counter for total active objects
+char canvas[ROWS][COLS];   // 2D grid array representing the screen
 
-// Function Prototypes
-void init_canvas();
-void display_canvas();
-void redraw_all_shapes();
-void draw_line_on_canvas(int x1, int y1, int x2, int y2);
-void add_line();
-void delete_shape();
-void clear_input_buffer();
-
-int main() {
-    int choice;
-
-    init_canvas();
-
-    while (1) {
-        printf("\n--- 2D GRAPHICS EDITOR ---\n");
-        printf("1. Display Canvas\n");
-        printf("2. Add Line\n");
-        printf("3. Delete Shape\n");
-        printf("4. Exit\n");
-        printf("Enter your choice: ");
-        
-        if (scanf("%d", &choice) != 1) {
-            printf("Invalid input! Please enter a number.\n");
-            clear_input_buffer();
-            continue;
-        }
-        clear_input_buffer();
-
-        switch (choice) {
-            case 1:
-                display_canvas();
-                break;
-            case 2:
-                add_line();
-                break;
-            case 3:
-                delete_shape();
-                break;
-            case 4:
-                printf("Exiting program. Goodbye!\n");
-                exit(0);
-            default:
-                printf("Invalid choice! Please try again.\n");
-        }
-    }
-    return 0;
-}
-
-// Utility to prevent infinite menu loops on bad inputs
-void clear_input_buffer() {
-    int c;
-    while ((c = getchar()) != '\n' && c != EOF);
-}
-
-// Fills the canvas with underscores '_'
-void init_canvas() {
-    for (int i = 0; i < HEIGHT; i++) {
-        for (int j = 0; j < WIDTH; j++) {
+// Function to fill the canvas with background characters ('_')
+void clearCanvas() {
+    for (int i = 0; i < ROWS; i++) {
+        for (int j = 0; j < COLS; j++) {
             canvas[i][j] = '_';
         }
     }
 }
 
-// Prints the current canvas to the console
-void display_canvas() {
-    printf("\n");
-    for (int i = 0; i < HEIGHT; i++) {
-        for (int j = 0; j < WIDTH; j++) {
-            printf("%c", canvas[i][j]);
-        }
-        printf("\n");
-    }
-}
-
-// Bresenham's Line Algorithm to plot asterisks '*'
-void draw_line_on_canvas(int x1, int y1, int x2, int y2) {
-    int dx = abs(x2 - x1), sx = x1 < x2 ? 1 : -1;
-    int dy = -abs(y2 - y1), sy = y1 < y2 ? 1 : -1;
-    int err = dx + dy, e2;
-
-    while (1) {
-        if (x1 >= 0 && x1 < WIDTH && y1 >= 0 && y1 < HEIGHT) {
-            canvas[y1][x1] = '*';
-        }
+// Function to calculate and plot shapes onto the 2D canvas array
+void rasterizeShapes() {
+    clearCanvas(); // Always start with a fresh blank canvas
+    
+    // Loop through all shapes stored in our array history
+    for (int k = 0; k < object_count; k++) {
+        Shape s = shapes[k];
         
-        if (x1 == x2 && y1 == y2) break;
-        e2 = 2 * err;
-        if (e2 >= dy) { err += dy; x1 += sx; }
-        if (e2 <= dx) { err += dx; y1 += sy; }
-    }
-}
-
-// Clears canvas and redraws only the active shapes
-void redraw_all_shapes() {
-    init_canvas(); 
-    for (int i = 0; i < shape_count; i++) {
-        if (shapes[i].active) {
-            if (shapes[i].type == LINE) {
-                draw_line_on_canvas(shapes[i].x1, shapes[i].y1, shapes[i].x2, shapes[i].y2);
+        // 1. Drawing a Rectangle Outline
+        if (s.type == 'R') { 
+            for (int i = s.y1; i <= s.y2; i++) {
+                for (int j = s.x1; j <= s.x2; j++) {
+                    // Check boundaries to avoid crashing out of array limits
+                    if (i >= 0 && i < ROWS && j >= 0 && j < COLS) {
+                        // Plot '*' only on the borders of the rectangle
+                        if (i == s.y1 || i == s.y2 || j == s.x1 || j == s.x2)
+                            canvas[i][j] = '*';
+                    }
+                }
+            }
+        } 
+        // 2. Drawing a Circle Outline
+        else if (s.type == 'C') { 
+            for (int i = 0; i < ROWS; i++) {
+                for (int j = 0; j < COLS; j++) {
+                    // Standard Circle Distance Formula: sqrt((x-h)^2 + (y-k)^2)
+                    double dist = sqrt(pow(j - s.x1, 2) + pow(i - s.y1, 2));
+                    // If the distance matches the radius, place a border pixel
+                    if (abs((int)dist - s.r) == 0) {
+                        canvas[i][j] = '*';
+                    }
+                }
+            }
+        } 
+        // 3. Drawing a Line (Simplified to Straight Horizontal or Vertical)
+        else if (s.type == 'L') { 
+            if (s.y1 == s.y2) { // Horizontal line condition
+                for (int j = s.x1; j <= s.x2; j++) canvas[s.y1][j] = '*';
+            } else if (s.x1 == s.x2) { // Vertical line condition
+                for (int i = s.y1; i <= s.y2; i++) canvas[i][s.x1] = '*';
             }
         }
     }
 }
 
-// Handles user input for adding a line
-void add_line() {
-    if (shape_count >= MAX_SHAPES) {
-        printf("Error: Maximum shape limit reached!\n");
-        return;
+// Function to print the processed canvas array to the screen
+void displayCanvas() {
+    rasterizeShapes(); // Calculate all shapes before printing
+    for (int i = 0; i < ROWS; i++) {
+        for (int j = 0; j < COLS; j++) {
+            printf("%c", canvas[i][j]);
+        }
+        printf("\n"); // Move to the next row
     }
-
-    int x1, y1, x2, y2;
-    printf("Enter Start Coordinates (X1 Y1) [0-%d 0-%d]: ", WIDTH-1, HEIGHT-1);
-    if (scanf("%d %d", &x1, &y1) != 2) {
-        printf("Invalid input coordinates!\n");
-        clear_input_buffer();
-        return;
-    }
-    
-    printf("Enter End Coordinates (X2 Y2) [0-%d 0-%d]: ", WIDTH-1, HEIGHT-1);
-    if (scanf("%d %d", &x2, &y2) != 2) {
-        printf("Invalid input coordinates!\n");
-        clear_input_buffer();
-        return;
-    }
-    clear_input_buffer();
-
-    // Bound Validation Protection
-    if (x1 < 0 || x1 >= WIDTH || y1 < 0 || y1 >= HEIGHT ||
-        x2 < 0 || x2 >= WIDTH || y2 < 0 || y2 >= HEIGHT) {
-        printf("Error: Coordinates are out of canvas boundaries!\n");
-        return;
-    }
-
-    // Save shape details
-    shapes[shape_count].type = LINE;
-    shapes[shape_count].x1 = x1;
-    shapes[shape_count].y1 = y1;
-    shapes[shape_count].x2 = x2;
-    shapes[shape_count].y2 = y2;
-    shapes[shape_count].active = 1;
-    shape_count++;
-
-    redraw_all_shapes();
-    printf("Line added successfully!\n");
 }
 
-// Deletes a shape by marking its active flag to 0
-void delete_shape() {
-    printf("\n--- Active Shapes ---\n");
-    int active_found = 0;
-    for (int i = 0; i < shape_count; i++) {
-        if (shapes[i].active) {
-            printf("ID: %d | Type: Line | Points: (%d,%d) to (%d,%d)\n", 
-                   i, shapes[i].x1, shapes[i].y1, shapes[i].x2, shapes[i].y2);
-            active_found = 1;
+// Function to delete an object by index and shift the remaining ones
+void deleteObject(int index) {
+    if (index >= 0 && index < object_count) {
+        // Shift all elements on the right side one position to the left
+        for (int i = index; i < object_count - 1; i++) {
+            shapes[i] = shapes[i + 1];
         }
-    }
-
-    if (!active_found) {
-        printf("No shapes available to delete.\n");
-        return;
-    }
-
-    int id;
-    printf("Enter the ID of the shape to delete: ");
-    if (scanf("%d", &id) != 1) {
-        printf("Invalid ID type!\n");
-        clear_input_buffer();
-        return;
-    }
-    clear_input_buffer();
-
-    if (id >= 0 && id < shape_count) {
-        if (shapes[id].active) {
-            shapes[id].active = 0; 
-            redraw_all_shapes();   
-            printf("Shape %d deleted successfully!\n", id);
-        } else {
-            printf("Shape already deleted!\n");
-        }
+        object_count--; // Reduce total active shape count
+        printf("Object deleted successfully.\n");
     } else {
-        printf("Invalid ID range!\n");
+        printf("Invalid Object ID!\n");
     }
+}
+
+int main() {
+    int choice, id;
+    
+    // Infinite menu loop until user exits
+    while (1) {
+        printf("\n--- 2D Graphics Editor ---\n");
+        printf("1. Add Rectangle\n2. Add Circle\n3. Add Line\n4. Display Canvas\n5. Delete Object\n6. Modify Object\n7. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        // Handling structural data additions
+        if (choice >= 1 && choice <= 3) {
+            if (object_count >= MAX_OBJECTS) {
+                printf("Canvas storage full!\n");
+                continue;
+            }
+            
+            // Map choice to character types
+            shapes[object_count].type = (choice == 1) ? 'R' : (choice == 2) ? 'C' : 'L';
+            
+            // Get data parameters based on user shape choice
+            if (choice == 1) {
+                printf("Enter top-left (x1 y1) and bottom-right (x2 y2): ");
+                scanf("%d %d %d %d", &shapes[object_count].x1, &shapes[object_count].y1, &shapes[object_count].x2, &shapes[object_count].y2);
+            } else if (choice == 2) {
+                printf("Enter center (x1 y1) and radius r: ");
+                scanf("%d %d %d", &shapes[object_count].x1, &shapes[object_count].y1, &shapes[object_count].r);
+            } else {
+                printf("Enter start (x1 y1) and end (x2 y2): ");
+                scanf("%d %d %d %d", &shapes[object_count].x1, &shapes[object_count].y1, &shapes[object_count].x2, &shapes[object_count].y2);
+            }
+            object_count++; // Move tracking index forward
+        } 
+        else if (choice == 4) {
+            displayCanvas(); // Re-render and print
+        } 
+        else if (choice == 5) {
+            printf("Enter Object ID to delete (0 to %d): ", object_count - 1);
+            scanf("%d", &id);
+            deleteObject(id); // Fire deletion function
+        } 
+        else if (choice == 6) {
+            printf("Enter Object ID to modify (0 to %d): ", object_count - 1);
+            scanf("%d", &id);
+            if (id >= 0 && id < object_count) {
+                // Modifying values in-place inside the tracking structure array
+                printf("Enter new primary coordinates (x1 y1): ");
+                scanf("%d %d", &shapes[id].x1, &shapes[id].y1);
+                printf("Object updated. Display canvas to view changes.\n");
+            } else {
+                printf("Invalid ID!\n");
+            }
+        } 
+        else if (choice == 7) {
+            exit(0); // Safely close program execution
+        }
+    }
+    return 0;
 }
